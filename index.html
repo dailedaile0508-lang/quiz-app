@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>移动题库 - 在线做题</title>
+    <style>
+        :root {
+            --primary: #4f6ef7;
+            --primary-light: #eef4ff;
+            --bg: #f5f7fb;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+            --shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 16px;
+            line-height: 1.5;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 32px);
+        }
+
+        /* 头部 */
+        .header {
+            background: linear-gradient(135deg, #4f6ef7 0%, #6c8cff 100%);
+            color: #fff;
+            padding: 24px 20px 20px;
+            border-radius: 0 0 28px 28px;
+        }
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        /* 上传区 */
+        .upload-section {
+            padding: 16px 20px;
+        }
+        .upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #f0f4ff;
+            border: 2px dashed #b8c9ff;
+            border-radius: 16px;
+            padding: 18px 16px;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .upload-label:active {
+            background: #e4ebff;
+            border-color: var(--primary);
+            transform: scale(0.98);
+        }
+        .upload-label .icon {
+            font-size: 1.3rem;
+        }
+        #fileInput {
+            display: none;
+        }
+        .hint {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        /* 进度条 */
+        .progress {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        /* 题目列表 */
+        .questions {
+            flex: 1;
+            padding: 12px 16px 20px;
+            overflow-y: auto;
+            max-height: 55vh;
+            -webkit-overflow-scrolling: touch;
+        }
+        .questions::-webkit-scrollbar {
+            width: 4px;
+        }
+        .questions::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 4px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+        .empty .big-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #f1f5f9;
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.02);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .badge-single { background: #eff6ff; color: #2563eb; }
+        .badge-multiple { background: #fef3c7; color: #d97706; }
+        .badge-judge { background: #f0fdf4; color: #16a34a; }
+        .badge-fill { background: #fdf2f8; color: #db2777; }
+        .badge-essay { background: #f1f5f9; color: #475569; }
+
+        .stem {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #0f172a;
+            margin: 8px 0 14px;
+            word-break: break-word;
+        }
+
+        /* 选项 */
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: #f8fafc;
+            border-radius: 14px;
+            border: 1.5px solid transparent;
+            transition: 0.15s;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .option:active {
+            background: #eef2ff;
+        }
+        .option.selected {
+            background: #eef4ff;
+            border-color: #4f6ef7;
+        }
+        .option input {
+            accent-color: #4f6ef7;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            pointer-events: none;
+        }
+        .option .letter {
+            font-weight: 700;
+            color: #4f6ef7;
+            min-width: 24px;
+            font-size: 0.9rem;
+        }
+        .option .text {
+            flex: 1;
+            font-size: 0.95rem;
+        }
+
+        /* 判断题按钮 */
+        .judge-group {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+        .judge-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #475569;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .judge-btn:active {
+            transform: scale(0.96);
+        }
+        .judge-btn.active-true {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: #fff;
+        }
+        .judge-btn.active-false {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #fff;
+        }
+
+        /* 输入框 */
+        .fill-input,
+        .essay-textarea {
+            width: 100%;
+            margin-top: 8px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1.5px solid #e2e8f0;
+            background: #f9fafb;
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+            transition: 0.2s;
+            resize: vertical;
+            -webkit-appearance: none;
+        }
+        .fill-input:focus,
+        .essay-textarea:focus {
+            border-color: #4f6ef7;
+            background: #fff;
+        }
+        .essay-textarea {
+            min-height: 80px;
+        }
+
+        /* 底部按钮 */
+        .actions {
+            display: flex;
+            gap: 12px;
+            padding: 16px 20px 20px;
+            background: #fff;
+            border-top: 1px solid #f1f5f9;
+        }
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border-radius: 18px;
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-outline {
+            background: #f1f5f9;
+            color: #334155;
+        }
+        .btn-primary {
+            background: #4f6ef7;
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(79,110,247,0.25);
+        }
+        .btn:active {
+            transform: scale(0.95);
+            opacity: 0.9;
+        }
+
+        /* 结果 */
+        .result {
+            display: none;
+            margin: 8px 16px 16px;
+            padding: 14px 18px;
+            background: #f0f9ff;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            color: #0c4a6e;
+            border: 1px solid #bae6fd;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <!-- 头部 -->
+    <div class="header">
+        <h1>📋 移动题库</h1>
+        <p>上传Word文档 · 自动解析题目</p>
+    </div>
+
+    <!-- 上传区域 -->
+    <div class="upload-section">
+        <label class="upload-label" for="fileInput" id="uploadLabel">
+            <span class="icon">📄</span> 点击上传 .docx 文件
+        </label>
+        <input type="file" id="fileInput" accept=".docx">
+        <p class="hint">支持：单选题 / 多选题 / 判断题 / 填空题 / 简答题</p>
+    </div>
+
+    <!-- 进度 -->
+    <div class="progress" id="progressBar">
+        <span id="questionCount">共 0 题</span>
+        <span id="answeredCount">已答 0 题</span>
+    </div>
+
+    <!-- 题目容器 -->
+    <div class="questions" id="questionsContainer">
+        <div class="empty">
+            <div class="big-icon">📥</div>
+            <p>请上传Word文档开始做题</p>
+        </div>
+    </div>
+
+    <!-- 结果 -->
+    <div class="result" id="resultBox"></div>
+
+    <!-- 底部按钮 -->
+    <div class="actions">
+        <button class="btn btn-outline" id="resetBtn">🔄 重置</button>
+        <button class="btn btn-primary" id="submitBtn">✅ 提交</button>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Mammoth.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+<script>
+(function() {
+    // ========== 状态管理 ==========
+    let questions = [];
+    let answers = {};
+
+    // ========== DOM 元素 ==========
+    const fileInput = document.getElementById('fileInput');
+    const uploadLabel = document.getElementById('uploadLabel');
+    const questionsContainer = document.getElementById('questionsContainer');
+    const progressBar = document.getElementById('progressBar');
+    const questionCountEl = document.getElementById('questionCount');
+    const answeredCountEl = document.getElementById('answeredCount');
+    const resultBox = document.getElementById('resultBox');
+    const submitBtn = document.getElementById('submitBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const toast = document.getElementById('toast');
+
+    // ========== Toast 提示 ==========
+    let toastTimer;
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // ========== 题目解析 ==========
+    function parseDocxText(text) {
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+        if (lines.length === 0) return [];
+
+        const typeMap = {
+            '单选题': 'single',
+            '多选题': 'multiple',
+            '判断题': 'judge',
+            '填空题': 'fill',
+            '简答题': 'essay'
+        };
+
+        const result = [];
+        let currentType = null;
+        let buffer = [];
+
+        function flushBuffer() {
+            if (!currentType || buffer.length === 0) return;
+            const content = buffer.join('\n').trim();
+            if (!content) return;
+
+            const linesInBuffer = content.split('\n');
+            let stem = linesInBuffer[0];
+            let optionLines = linesInBuffer.slice(1);
+
+            // 清理题干中的题型标记
+            const typeLabels = Object.keys(typeMap);
+            for (const label of typeLabels) {
+                const regex = new RegExp(`^${label}[：:]*\\s*`, 'i');
+                stem = stem.replace(regex, '').trim();
+            }
+
+            const question = {
+                type: currentType,
+                stem: stem,
+                options: []
+            };
+
+            if (currentType === 'single' || currentType === 'multiple') {
+                // 尝试找到选项起始位置
+                const optStartIdx = linesInBuffer.findIndex(l => /^[A-Z][\.\、]/.test(l));
+                if (optStartIdx > 0) {
+                    stem = linesInBuffer.slice(0, optStartIdx).join(' ').trim();
+                    for (const label of typeLabels) {
+                        stem = stem.replace(new RegExp(`^${label}[：:]*\\s*`, 'i'), '').trim();
+                    }
+                    optionLines = linesInBuffer.slice(optStartIdx);
+                }
+                question.stem = stem;
+                question.options = optionLines
+                    .map(l => {
+                        const m = l.match(/^([A-Z])[\.\、]\s*(.+)/);
+                        return m ? { label: m[1], text: m[2].trim() } : null;
+                    })
+                    .filter(Boolean);
+            } else if (currentType === 'judge') {
+                question.options = [
+                    { label: '对', text: '正确' },
+                    { label: '错', text: '错误' }
+                ];
+            }
+
+            if (question.stem) {
+                result.push(question);
+            }
+        }
+
+        for (const line of lines) {
+            let matchedType = null;
+            for (const [keyword, type] of Object.entries(typeMap)) {
+                if (line.startsWith(keyword) || line.startsWith(keyword + '：') || line.startsWith(keyword + ':')) {
+                    matchedType = type;
+                    break;
+                }
+            }
+            if (matchedType) {
+                flushBuffer();
+                currentType = matchedType;
+                buffer = [line];
+            } else if (currentType) {
+                buffer.push(line);
+            }
+        }
+        flushBuffer();
+
+        return result;
+    }
+
+    // ========== 渲染题目 ==========
+    function renderQuestions() {
+        if (questions.length === 0) {
+            questionsContainer.innerHTML = `
+                <div class="empty">
+                    <div class="big-icon">📭</div>
+                    <p>暂无题目</p>
+                </div>`;
+            progressBar.style.display = 'none';
+            resultBox.style.display = 'none';
+            return;
+        }
+
+        progressBar.style.display = 'flex';
+        questionCountEl.textContent = `共 ${questions.length} 题`;
+
+        let html = '';
+        questions.forEach((q, idx) => {
+            const num = idx + 1;
+            let badgeClass = '';
+            let typeLabel = '';
+            switch (q.type) {
+                case 'single': badgeClass = 'badge-single'; typeLabel = '单选题'; break;
+                case 'multiple': badgeClass = 'badge-multiple'; typeLabel = '多选题'; break;
+                case 'judge': badgeClass = 'badge-judge'; typeLabel = '判断题'; break;
+                case 'fill': badgeClass = 'badge-fill'; typeLabel = '填空题'; break;
+                case 'essay': badgeClass = 'badge-essay'; typeLabel = '简答题'; break;
+            }
+
+            html += `<div class="card" data-index="${idx}">`;
+            html += `<span class="badge ${badgeClass}">${typeLabel}</span>`;
+            html += `<div class="stem">${num}. ${escapeHtml(q.stem)}</div>`;
+
+            if (q.type === 'single') {
+                html += `<div class="options">`;
+                q.options.forEach(opt => {
+                    const checked = answers[idx] === opt.label;
+                    html += `<div class="option ${checked ? 'selected' : ''}" data-idx="${idx}" data-type="single" data-value="${opt.label}">`;
+                    html += `<input type="radio" name="q${idx}" ${checked ? 'checked' : ''} tabindex="-1">`;
+                    html += `<span class="letter">${opt.label}.</span>`;
+                    html += `<span class="text">${escapeHtml(opt.text)}</span>`;
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            } else if (q.type === 'multiple') {
+                const selected = Array.isArray(answers[idx]) ? answers[idx] : [];
+                html += `<div class="options">`;
+                q.options.forEach(opt => {
+                    const checked = selected.includes(opt.label);
+                    html += `<div class="option ${checked ? 'selected' : ''}" data-idx="${idx}" data-type="multiple" data-value="${opt.label}">`;
+                    html += `<input type="checkbox" ${checked ? 'checked' : ''} tabindex="-1">`;
+                    html += `<span class="letter">${opt.label}.</span>`;
+                    html += `<span class="text">${escapeHtml(opt.text)}</span>`;
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            } else if (q.type === 'judge') {
+                const val = answers[idx];
+                html += `<div class="judge-group">`;
+                html += `<div class="judge-btn ${val === '对' ? 'active-true' : ''}" data-idx="${idx}" data-type="judge" data-value="对">✓ 正确</div>`;
+                html += `<div class="judge-btn ${val === '错' ? 'active-false' : ''}" data-idx="${idx}" data-type="judge" data-value="错">✗ 错误</div>`;
+                html += `</div>`;
+            } else if (q.type === 'fill') {
+                html += `<input type="text" class="fill-input" placeholder="请输入答案" data-idx="${idx}" data-type="fill" value="${escapeHtml(answers[idx] || '')}">`;
+            } else if (q.type === 'essay') {
+                html += `<textarea class="essay-textarea" placeholder="请输入你的回答..." data-idx="${idx}" data-type="essay">${escapeHtml(answers[idx] || '')}</textarea>`;
+            }
+
+            html += `</div>`;
+        });
+
+        questionsContainer.innerHTML = html;
+        bindEvents();
+        updateAnsweredCount();
+    }
+
+    function escapeHtml(str) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+        return String(str).replace(/[&<>"]/g, c => map[c] || c);
+    }
+
+    function updateAnsweredCount() {
+        let count = 0;
+        questions.forEach((q, idx) => {
+            const ans = answers[idx];
+            if (q.type === 'single' || q.type === 'judge' || q.type === 'fill') {
+                if (ans && String(ans).trim() !== '') count++;
+            } else if (q.type === 'multiple') {
+                if (Array.isArray(ans) && ans.length > 0) count++;
+            } else if (q.type === 'essay') {
+                if (ans && String(ans).trim() !== '') count++;
+            }
+        });
+        answeredCountEl.textContent = `已答 ${count} 题`;
+    }
+
+    // ========== 事件绑定（事件委托） ==========
+    function bindEvents() {
+        // 单选题选项点击
+        questionsContainer.querySelectorAll('.option[data-type="single"]').forEach(el => {
+            el.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.idx);
+                const value = this.dataset.value;
+                answers[idx] = value;
+                renderQuestions();
+            });
+        });
+
+        // 多选题选项点击
+        questionsContainer.querySelectorAll('.option[data-type="multiple"]').forEach(el => {
+            el.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.idx);
+                const value = this.dataset.value;
+                if (!Array.isArray(answers[idx])) answers[idx] = [];
+                if (answers[idx].includes(value)) {
+                    answers[idx] = answers[idx].filter(v => v !== value);
+                } else {
+                    answers[idx].push(value);
+                }
+                renderQuestions();
+            });
+        });
+
+        // 判断题按钮
+        questionsContainer.querySelectorAll('.judge-btn').forEach(el => {
+            el.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.idx);
+                const value = this.dataset.value;
+                answers[idx] = value;
+                renderQuestions();
+            });
+        });
+
+        // 填空题输入
+        questionsContainer.querySelectorAll('.fill-input').forEach(input => {
+            input.addEventListener('input', function() {
+                const idx = parseInt(this.dataset.idx);
+                answers[idx] = this.value;
+                updateAnsweredCount();
+            });
+        });
+
+        // 简答题输入
+        questionsContainer.querySelectorAll('.essay-textarea').forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                const idx = parseInt(this.dataset.idx);
+                answers[idx] = this.value;
+                updateAnsweredCount();
+            });
+        });
+    }
+
+    // ========== 文件处理 ==========
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.name.endsWith('.docx')) {
+            showToast('请上传 .docx 格式的文件');
+            fileInput.value = '';
+            return;
+        }
+
+        uploadLabel.textContent = '⏳ 正在解析...';
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            mammoth.extractRawText({ arrayBuffer: ev.target.result })
+                .then(result => {
+                    const parsed = parseDocxText(result.value);
+                    if (parsed.length === 0) {
+                        showToast('未识别到题目，请检查文档格式');
+                        questions = [];
+                    } else {
+                        questions = parsed;
+                        showToast(`成功解析 ${parsed.length} 道题目`);
+                    }
+                    answers = {};
+                    resultBox.style.display = 'none';
+                    renderQuestions();
+                    uploadLabel.innerHTML = '<span class="icon">📄</span> 点击上传 .docx 文件';
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('解析失败，请确认文件完整');
+                    uploadLabel.innerHTML = '<span class="icon">📄</span> 点击上传 .docx 文件';
+                });
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // ========== 提交 ==========
+    submitBtn.addEventListener('click', () => {
+        if (questions.length === 0) {
+            showToast('请先上传题目');
+            return;
+        }
+        let answered = 0;
+        questions.forEach((q, idx) => {
+            const ans = answers[idx];
+            if (q.type === 'single' || q.type === 'judge' || q.type === 'fill') {
+                if (ans && String(ans).trim() !== '') answered++;
+            } else if (q.type === 'multiple') {
+                if (Array.isArray(ans) && ans.length > 0) answered++;
+            } else if (q.type === 'essay') {
+                if (ans && String(ans).trim() !== '') answered++;
+            }
+        });
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = `
+            📊 <strong>作答统计</strong><br>
+            总题数：${questions.length} 题 &nbsp;|&nbsp; 已答：${answered} 题 &nbsp;|&nbsp; 完成度：${Math.round(answered / questions.length * 100)}%
+        `;
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
+    // ========== 重置 ==========
+    resetBtn.addEventListener('click', () => {
+        if (questions.length === 0) return;
+        if (confirm('确定要清空所有答案吗？')) {
+            answers = {};
+            resultBox.style.display = 'none';
+            renderQuestions();
+            showToast('答案已清空');
+        }
+    });
+
+    // ========== 初始渲染 ==========
+    renderQuestions();
+})();
+</script>
+</body>
+</html>
